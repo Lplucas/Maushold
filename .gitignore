@@ -1,0 +1,48 @@
+# =============================================================================
+# RatFamilyBot — .gitignore
+# Files and folders that should NEVER be committed to git.
+# =============================================================================
+
+# --- Secrets & local config ---
+.env
+
+# --- Database (auto-generated at runtime) ---
+database.json   # Local game data — each dev/instance has their own
+
+# --- Python cache & Testing ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*_test_results.txt
+*.ipynb_checkpoints/
+
+# --- Profiling output ---
+*.prof
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS-generated junk ---
+.DS_Store       # macOS
+Thumbs.db       # Windows
+
+# --- IDE / editor folders ---
+.vscode/
+.idea/
+*.suo
+*.user
+
+# --- AI & User Documents ---
+md-references/
+Cloud-and-DB_implementation_plan.md
