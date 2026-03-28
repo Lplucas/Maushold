@@ -43,6 +43,6 @@ Thumbs.db       # Windows
 *.suo
 *.user
 
-# --- AI & User Documents ---
+# --- User Documents ---
 md-references/
 Cloud-and-DB_implementation_plan.md
