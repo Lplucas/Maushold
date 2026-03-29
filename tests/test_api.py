@@ -28,7 +28,6 @@ import api
 # Marca todos os testes deste módulo como assíncronos.
 # Sem isso, testes com 'async def' retornam uma coroutine não-executada
 # e passam silenciosamente — um FALSO POSITIVO perigoso.
-pytestmark = pytest.mark.asyncio
 
 
 # =============================================================================
@@ -139,6 +138,7 @@ class TestExtractAppIdFromUrl:
 # get_steam_game_info() — ASYNC
 # =============================================================================
 
+@pytest.mark.asyncio
 class TestGetSteamGameInfo:
     """Testes para a busca de nome + preço na Steam API (async, aiohttp)."""
 
@@ -220,6 +220,7 @@ class TestGetSteamGameInfo:
 # _get_itad_uuid() — ASYNC
 # =============================================================================
 
+@pytest.mark.asyncio
 class TestGetItadUuid:
     """Testes para a resolução Steam AppID → ITAD UUID (async, aiohttp)."""
 
@@ -281,6 +282,7 @@ class TestGetItadUuid:
 # get_itad_prices() — ASYNC
 # =============================================================================
 
+@pytest.mark.asyncio
 class TestGetItadPrices:
     """Testes para busca de melhor deal + histórico de preço via ITAD (async)."""
 

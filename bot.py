@@ -837,7 +837,7 @@ def main() -> None:
     # Application.builder() is the modern way to create a bot in python-telegram-bot v20+.
     # .token(token) passes our secret API key so Telegram knows who we are.
     # .build() finalizes the object.
-    print("🐀 Starting RatFamilyBot...")
+    logger.info("Starting RatFamilyBot...")
     application = Application.builder().token(token).build()
 
     # --- REGISTER COMMAND HANDLERS ---
@@ -857,7 +857,7 @@ def main() -> None:
     # "Hey, are there any new messages for me?" every few seconds.
     # This is the simplest approach — no complex server setup needed.
     # The bot will keep running until you press Ctrl+C in the terminal.
-    print("✅ Bot is running! Press Ctrl+C to stop.")
+    logger.info("Bot is running! Press Ctrl+C to stop.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
