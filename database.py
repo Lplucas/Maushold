@@ -1,20 +1,32 @@
 # =============================================================================
-# database.py - The "brain storage" of our bot
+# database.py — Camada de persistência (I/O assíncrono via aiofiles)
 # =============================================================================
-# This file is responsible for ALL reading and writing to our database.
-# Our "database" is just a JSON file (database.json). Think of it like a
-# notebook that the bot writes to and reads from whenever it needs to remember
-# something.
+# Responsável por TODA leitura e escrita no banco de dados (database.json).
+# Usa aiofiles para I/O não-bloqueante, garantindo que o event loop do bot
+# não seja paralisado durante operações de disco.
+#
+# PADRÃO DE I/O:
+#   - Leitura: aiofiles.open() → await f.read() → json.loads(string)
+#   - Escrita: json.dumps(dict) → aiofiles.open() → await f.write(string)
+#   A separação entre serialização (json.loads/dumps, em memória) e I/O
+#   (aiofiles.open/read/write) é intencional — minimiza a janela de arquivo
+#   aberto e permite I/O verdadeiramente assíncrono.
+#
+# RESILIÊNCIA:
+#   - Arquivo inexistente → retorna banco vazio (FileNotFoundError)
+#   - JSON corrompido → retorna banco vazio (JSONDecodeError) + log de erro
+#   Nenhum caso causa crash do bot.
 #
 # WHY A SEPARATE FILE?
-# Keeping database logic here (instead of in bot.py) is called "separation of
-# concerns". It keeps our code clean and easy to fix: if something breaks with
-# saving/loading data, we know exactly where to look.
+#   Keeping database logic here (instead of in bot.py) is called "separation of
+#   concerns". If something breaks with saving/loading data, we know exactly
+#   where to look.
 # =============================================================================
 
-import json      # Python's built-in library for reading/writing JSON files
+import json      # json.loads() para parsing, json.dumps() para serialização
 import asyncio   # Used for the Lock to prevent race conditions
-import logging   # Structured logging — substitui print() para observabilidade consistente
+import logging   # Structured logging — observabilidade consistente
+import aiofiles  # I/O assíncrono de arquivos — substitui open() nativo
 
 logger = logging.getLogger(__name__)
 
@@ -34,22 +46,28 @@ db_lock = asyncio.Lock()
 
 async def load_database() -> dict:
     """
-    Reads the database.json file and returns its contents as a Python dict.
+    Carrega o banco de dados a partir do arquivo JSON.
 
-    If the file doesn't exist yet (first time running the bot), it creates
-    a fresh, empty database structure and returns that instead.
+    Usa aiofiles para leitura não-bloqueante. O conteúdo é lido como string
+    (await f.read()) e depois convertido para dict via json.loads() — operação
+    em memória, síncrona e rápida.
+
+    Casos de erro tratados:
+      - FileNotFoundError → primeiro uso, retorna {"games": {}}
+      - json.JSONDecodeError → arquivo corrompido, retorna {"games": {}} + log
 
     Returns:
-        dict: The entire database as a Python dictionary.
+        dict: O banco de dados completo como dicionário Python.
     """
-    # We lock the padlock BEFORE touching the file. 
+    # We lock the padlock BEFORE touching the file.
     # The 'async with' automatically locks it here, and unlocks it when the block ends.
     async with db_lock:
         try:
-            # 'r' means "read-only mode". 'encoding="utf-8"' handles special characters
-            # like accents (é, ã) correctly.
-            with open(DATABASE_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)  # json.load() converts JSON text → Python dict
+            # aiofiles.open() é a versão assíncrona do open() nativo.
+            # A diferença: o I/O acontece sem bloquear o event loop do bot.
+            async with aiofiles.open(DATABASE_FILE, "r", encoding="utf-8") as f:
+                content = await f.read()         # Lê todo o conteúdo como string
+            data = json.loads(content)           # Converte string → dict (em memória, rápido)
             return data
         except FileNotFoundError:
             # First run! Return a default empty structure.
@@ -57,28 +75,35 @@ async def load_database() -> dict:
             return {"games": {}}
         except json.JSONDecodeError:
             # Arquivo corrompido — resiliência: retorna vazio em vez de crashar.
-            # Isso impede que um arquivo danificado torne o bot inutilizável.
+            # O arquivo corrompido NÃO é deletado automaticamente — permite investigação.
             logger.error("Arquivo '%s' corrompido! Retornando banco vazio.", DATABASE_FILE)
             return {"games": {}}
 
 
 async def save_database(data: dict) -> None:
     """
-    Takes a Python dictionary and writes it to database.json, overwriting it.
+    Serializa o dicionário e salva no arquivo JSON.
+
+    Estratégia de escrita segura:
+      1. json.dumps() converte dict → string EM MEMÓRIA (rápido)
+      2. aiofiles.open("w") abre o arquivo
+      3. await f.write(content) escreve a string de uma vez
+
+    Gerar a string ANTES de abrir o arquivo minimiza a janela de risco:
+    quanto menos tempo o arquivo fica aberto para escrita, menor a chance
+    de corrupção por interrupção (ex: processo encerrado abruptamente).
 
     Args:
-        data (dict): The full database dictionary to save.
+        data (dict): O dicionário completo do banco de dados para salvar.
     """
     # We lock the padlock BEFORE writing.
     # Even if someone is reading, they must finish and unlock before we can write.
     async with db_lock:
-        # 'w' means "write mode" — it creates the file if it doesn't exist,
-        # or overwrites it completely if it does.
-        with open(DATABASE_FILE, "w", encoding="utf-8") as f:
-            # json.dump() converts Python dict → JSON text and writes to the file.
-            # indent=4 makes the JSON file human-readable (nicely indented).
-            # ensure_ascii=False allows characters like ã, é to be saved correctly.
-            json.dump(data, f, indent=4, ensure_ascii=False)
+        # Passo 1: Serializa para string em memória (operação síncrona, rápida)
+        content = json.dumps(data, indent=4, ensure_ascii=False)
+        # Passo 2: Abre o arquivo e escreve de uma vez (I/O assíncrono)
+        async with aiofiles.open(DATABASE_FILE, "w", encoding="utf-8") as f:
+            await f.write(content)
         logger.info("Banco de dados salvo com sucesso.")
 
 

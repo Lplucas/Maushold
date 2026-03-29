@@ -3,16 +3,16 @@
 Um bot para o Telegram que substitui a planilha compartilhada para racharem jogos da Steam!
 
 ## Estrutura do Projeto
-```
+```text
 RatBot/
-├── bot.py                 # Arquivo principal — conecta ao Telegram e recebe comandos
-├── api.py                 # Comunicação externa (Steam API e ITAD API)
-├── database.py            # Toda a lógica de leitura/escrita do banco de JSON
+├── bot.py                 # Arquivo principal — conecta ao Telegram, recebe comandos e orquestra chamadas assíncronas
+├── api.py                 # Comunicação externa (Steam API e ITAD API) via requisições aiohttp (Non-blocking)
+├── database.py            # Toda a lógica de leitura/escrita do banco de JSON de forma assíncrona com aiofiles
 ├── database.json          # Criado automaticamente na primeira execução
 │
-├── tests/                 # Testes unitários (pytest) — 55 testes
+├── tests/                 # Testes unitários (pytest) — 65 testes
 │   ├── conftest.py        # Fixtures reutilizáveis (mock_update, mock_context)
-│   ├── test_api.py        # 18 testes — URLs, Steam API, ITAD, erros
+│   ├── test_api.py        # 22 testes — URLs, Steam API, ITAD, erros, mock assíncrono
 │   ├── test_bot.py        # 20 testes — todos os comandos + helpers
 │   ├── test_database.py   # 17 testes — CRUD, edge cases, resiliência
 │   └── benchmarks/        # Scripts de performance
@@ -35,23 +35,29 @@ RatBot/
 
 ```mermaid
 graph TD
-    %% Estilos Globais
-    classDef user fill:#2b2d42,stroke:#8d99ae,stroke-width:2px,color:#fff,rx:10,ry:10
-    classDef bot fill:#00509d,stroke:#002855,stroke-width:3px,color:#fff,rx:10,ry:10
-    classDef api fill:#4c956c,stroke:#2c6e49,stroke-width:3px,color:#fff,rx:10,ry:10
-    classDef db fill:#9a031e,stroke:#5f0f40,stroke-width:3px,color:#fff,rx:10,ry:10
-    classDef external fill:#e0e1dd,stroke:#778da9,stroke-width:2px,color:#000,stroke-dasharray: 5 5,rx:10,ry:10
-    classDef file fill:#ffb703,stroke:#fb8500,stroke-width:2px,color:#000
-    
+    %% Estilos Globais (Otimizados com a Paleta Nativa do GitHub Dark Mode)
+    classDef user fill:#21262d,stroke:#8b949e,stroke-width:2px,color:#c9d1d9,rx:20,ry:20
+    classDef bot fill:#1f6feb,stroke:#58a6ff,stroke-width:3px,color:#ffffff,rx:20,ry:20
+    classDef api fill:#238636,stroke:#2ea043,stroke-width:3px,color:#ffffff,rx:20,ry:20
+    classDef db fill:#da3633,stroke:#ff7b72,stroke-width:3px,color:#ffffff,rx:20,ry:20
+    classDef external fill:#161b22,stroke:#6e7681,stroke-width:2px,color:#8b949e,stroke-dasharray: 5 5,rx:10,ry:10
+    classDef telegrm fill:#0088cc,stroke:#58a6ff,stroke-width:2px,color:#ffffff,stroke-dasharray: 5 5,rx:10,ry:10
+    classDef file fill:#d29922,stroke:#e3b341,stroke-width:2px,color:#000000
+    classDef async fill:#8957e5,stroke:#d2a8ff,stroke-width:2px,color:#ffffff,rx:5,ry:5
+    classDef spacer fill:none,stroke:none,color:transparent
+
     %% Atores e Sistemas
-    User(👨‍👩‍👧 Familiares):::user
-    Telegram((💬 API do Telegram)):::external
+    User(👨‍👩‍👧 Família Steam):::user
+    Telegram(((💬 API do Telegram))):::telegrm
 
     %% Nódulos do Nosso App
-    subgraph APP["Servidor do RatBot"]
-        Manager{"🧠 bot.py\n(Gerente / Interface)"}:::bot
-        Messenger["🌐 api.py\n(Office Boy / Mensageiro)"]:::api
-        Archivist["💾 database.py\n(Arquivista / Memória)"]:::db
+    subgraph APP["Servidor do RatBot (Arquitetura 100% Assíncrona)"]
+        Space[ ]:::spacer
+        Manager{"🧠 bot.py<br>(Gerente / Event Loop)"}:::bot
+        Messenger["🌐 api.py<br>(Mensageiro / aiohttp)"]:::api
+        Archivist["💾 database.py<br>(Arquivista / aiofiles)"]:::db
+        Paralelismo["⚡ asyncio.gather<br>(Despachante Paralelo)"]:::async
+        Space ~~~ Manager
     end
 
     %% Recursos Locais
@@ -63,20 +69,24 @@ graph TD
     ITAD(((🏷️ ITAD API))):::external
 
     %% Conexões do Usuário
-    User <-->|Manda /comandos\nRecebe Mensagens| Telegram
-    Telegram <-->|Polling| Manager
+    User <-->|"Manda /comandos<br>Recebe Mensagens"| Telegram
+    Telegram <-->|Polling Async| Manager
 
     %% Conexões Internas do App
-    Manager -->|"/add URL" \n Pede para buscar dados| Messenger
-    Manager -->|"/want 123" \n Pede para salvar ou ler interessados| Archivist
+    Manager -->|Dispara múltiplas buscas| Paralelismo
+    Paralelismo -.->|"Busca de forma simultânea<br>(Non-blocking)"| Messenger
+    Manager -->|Pede para salvar ou consultar| Archivist
 
     %% Conexões do Mensageiro (API)
-    Messenger -->|Pega Nome e Preço Base| Steam
-    Messenger -->|Pega Menor Preço e Promoção Atual| ITAD
+    Messenger -->|Sessão aiohttp| Steam
+    Messenger -->|"Sessão aiohttp<br>(Conexão reaproveitada)"| ITAD
 
     %% Conexões do Arquivista (DB)
-    Archivist -.->|Tranca a porta para evitar colisão| Lock
-    Lock -.->|Abre, Lê, Salva, Fecha| Arquivo
+    Archivist -.->|Aguarda Lock assíncrono| Lock
+    Lock -.->|"Abre, Lê, Salva, Fecha<br>(I/O via aiofiles)"| Arquivo
+
+    %% Estilo do Servidor (Fundo transparente, borda padrão GitHub de demarcação)
+    style APP fill:transparent,stroke:#30363d,stroke-width:2px,stroke-dasharray: 15 10 8 4,color:#8b949e
 ```
 
 ## Configuração Inicial

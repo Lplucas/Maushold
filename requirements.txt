@@ -1,6 +1,8 @@
 python-telegram-bot==21.6
-requests==2.31.0
+aiohttp==3.13.4
+aiofiles==25.1.0
 python-dotenv==1.0.0
+
 
 # Testing
 pytest==9.0.2
