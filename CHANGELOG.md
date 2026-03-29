@@ -5,6 +5,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.8.0] — 2026-03-29 — Sprint 2: Migração Assíncrona Completa ✅
+
+### Adicionado
+- **`aiohttp==3.13.4`** — substitui `requests` para chamadas HTTP não-bloqueantes (Steam + ITAD).
+- **`aiofiles==25.1.0`** — I/O de arquivo assíncrono para `database.json`.
+- **`STEAM_APP_RE`** — regex compilada (`re.compile`) como constante de módulo em `api.py`, eliminando recompilação a cada chamada de `extract_app_id_from_url()`.
+- **`asyncio.gather()`** — chamadas Steam + ITAD agora executam em PARALELO em `_add_game_to_db()`, reduzindo tempo de resposta de ~2s (sequencial) para ~1s (paralelo).
+- **Helper `_make_aiohttp_mock()`** em `test_api.py` — encapsula a complexidade de mockar 3 camadas de context managers assíncronos do aiohttp.
+
+### Alterado
+- **`database.py` — `open()` → `aiofiles.open()`:** leitura e escrita de `database.json` são agora não-bloqueantes. Padrão: `json.loads(await f.read())` para leitura, `json.dumps()` + `await f.write()` para escrita (minimiza janela de arquivo aberto).
+- **`api.py` — `requests` → `aiohttp`:** todas as funções HTTP (`get_steam_game_info`, `_get_itad_uuid`, `get_itad_prices`) são agora `async def`. Exceções mapeadas: `requests.exceptions.Timeout` → `asyncio.TimeoutError`, `requests.exceptions.RequestException` → `aiohttp.ClientError`.
+- **`api.py` — sessão compartilhada em `get_itad_prices()`:** as duas chamadas internas (prices + history) compartilham uma única `aiohttp.ClientSession`, reutilizando a conexão TCP.
+- **`bot.py` — `_add_game_to_db()` usa `asyncio.gather(return_exceptions=True)`:** se uma das chamadas falhar, a outra continua normalmente. Exceções retornadas como valores são tratadas como `None`.
+- **`bot.py` — cabeçalho do módulo atualizado:** documenta arquitetura assíncrona e lista completa de comandos.
+- **`test_api.py` — completamente reescrita:** todos os mocks migrados de `@patch("api.requests.get")` para `@patch("api.aiohttp.ClientSession")` com `AsyncMock`.
+
+### Removido
+- **`requests==2.31.0`** — removida do `requirements.txt`. Nenhum arquivo `.py` importa `requests` após a migração.
+
+### Nota
+- **Verificação anti-falso-positivo:** após cada teste async, quebramos intencionalmente a função testada para confirmar que o teste falha. Método validado em `test_paid_game_success`.
+
+### Resultados
+```
+test_api.py      → 22 passed ✅ (+4 edge cases)
+test_bot.py      → 20 passed ✅ (sem mudanças)
+test_database.py → 17 passed ✅ (sem mudanças)
+Extras           → 6 passed  ✅
+Total: 65/65 testes passando (0.45s)
+```
+
+---
+
 ## [v0.7.1] — 2026-03-28 — Sprint 1: Correções Críticas ✅
 
 ### Corrigido
@@ -267,7 +301,7 @@ Total: 16/16 testes passando
 
 O roadmap foi reestruturado com base na **Análise Técnica v3.0**, priorizando a estabilidade, refatoração de I/O assíncrono e arquitetura limpa antes das features em nuvem. Cada ciclo foca em ganho mensurável no código e facilidade de teste continuo.
 
-## Fase 1 — Estabilidade e Assincronicidade (Sprints 1 e 2) 🚧
+## Fase 1 — Estabilidade e Assincronicidade (Sprints 1 e 2) ✅
 ### v0.9.0 — Async Completo & Correção Crítica
 - [ ] **Correção de Bugs:** Inclusão de `await` e campo `best_deal_shop` nas funções de add do `bot.py`
 - [ ] **Rede Async:** Substituir `requests` bloqueante por `aiohttp` na `api.py`

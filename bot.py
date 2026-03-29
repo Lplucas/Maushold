@@ -1,27 +1,35 @@
 # =============================================================================
-# bot.py - The Main Bot File (Steps 1 & 2)
+# bot.py — Ponto de entrada do RatFamilyBot
 # =============================================================================
-# This is the entry point of our bot. Think of it as the "control center".
-# It connects to Telegram, listens for commands, and calls functions from
-# our other files (api.py, database.py) to do the actual work.
+# Controla toda a interação com o Telegram: recebe comandos, chama api.py
+# para dados de preço (Steam + ITAD via aiohttp) e database.py para
+# persistência (via aiofiles). Todas as chamadas externas são assíncronas.
 #
-# CURRENT FEATURES:
-#   - /start  → Welcome message explaining what the bot does
-#   - /help   → Lists all available commands
-#   - /add    → Add a game via Steam URL (parses URL, fetches data, saves to DB)
+# FEATURES:
+#   /start    → Mensagem de boas-vindas
+#   /help     → Lista de todos os comandos
+#   /add      → Adiciona jogo via URL da Steam
+#   /want     → Registra interesse em rachar um jogo
+#   /list     → Lista todos os jogos com preços e interessados
+#   /game     → Detalhes de um jogo específico por AppID
+#   /delete   → Remove um jogo do banco de dados
+#   /unwant   → Remove interesse de um jogo
+#   /all2date → Atualiza preços de todos os jogos
 #
-# COMING SOON (Steps 3-4):
-#   - /want   → Express interest in splitting a game's cost
-#   - /list   → Show all games with prices and interested users
+# ARQUITETURA ASSÍNCRONA:
+#   - api.py: HTTP via aiohttp (não-bloqueante)
+#   - database.py: I/O via aiofiles (não-bloqueante)
+#   - _add_game_to_db(): asyncio.gather() para Steam+ITAD em paralelo
 # =============================================================================
 
 import logging          # Python's built-in tool for printing useful log messages
+import asyncio           # asyncio.gather() for parallel async calls
 import os               # Used to read environment variables (our bot token)
 from dotenv import load_dotenv  # Reads our .env file into environment variables
 
 # Our own modules (files we wrote):
-# - api.py handles ALL network calls (Steam, CheapShark)
-# - database.py handles ALL file reads/writes
+# - api.py handles ALL network calls (Steam, ITAD) via aiohttp
+# - database.py handles ALL file reads/writes via aiofiles
 import api
 import database
 
@@ -254,6 +262,13 @@ async def _add_game_to_db(app_id: str) -> dict:
     """
     Internal helper: fetches game data from Steam + ITAD and saves to DB.
 
+    Usa asyncio.gather() para buscar Steam e ITAD em PARALELO, reduzindo
+    o tempo total de ~2 requests sequenciais para ~1 round-trip (o mais lento).
+
+    return_exceptions=True: se uma das chamadas falhar, a outra continua
+    normalmente — o resultado da chamada que falhou é retornado como uma
+    instância de Exception em vez de propagar a exceção.
+
     Used by add_command and want_command (Steam URL path).
 
     Returns a dict with the result of the operation:
@@ -263,22 +278,32 @@ async def _add_game_to_db(app_id: str) -> dict:
         "current_price": float,
       }
     """
-    steam_info = api.get_steam_game_info(app_id)
-    if steam_info is None:
+    # --- Chamadas PARALELAS via asyncio.gather() ---
+    # Antes (sequencial): ~2s total (1s Steam + 1s ITAD)
+    # Depois (paralelo):  ~1s total (ambas rodam ao mesmo tempo)
+    steam_info, itad_data = await asyncio.gather(
+        api.get_steam_game_info(app_id),
+        api.get_itad_prices(app_id),
+        return_exceptions=True,  # Falha em uma não cancela a outra
+    )
+
+    # Se gather() capturou uma exceção, o resultado é a exceção em vez do dict.
+    # Tratamos qualquer Exception como se a API tivesse retornado None.
+    if isinstance(steam_info, Exception) or steam_info is None:
         return {"status": "steam_error", "game_name": None, "current_price": -1.0}
 
     game_name = steam_info["name"]
     current_price = steam_info["current_price"]
 
-    itad_data = api.get_itad_prices(app_id)
-    if itad_data is not None:
-        best_deal_price = itad_data["best_deal_price"]
-        best_deal_shop  = itad_data.get("best_deal_shop", "")
-        historical_low  = itad_data["historical_low"]
-    else:
+    # ITAD é optional — o bot funciona mesmo sem dados de deal/histórico
+    if isinstance(itad_data, Exception) or itad_data is None:
         best_deal_price = -1.0
         best_deal_shop  = ""
         historical_low  = -1.0
+    else:
+        best_deal_price = itad_data["best_deal_price"]
+        best_deal_shop  = itad_data.get("best_deal_shop", "")
+        historical_low  = itad_data["historical_low"]
 
     was_added = await database.add_game(
         app_id=app_id,
