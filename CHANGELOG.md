@@ -5,6 +5,52 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.7.2] — 2026-03-30 — Hotfix Expedite: Formatação de Mensagens ✅
+
+### Corrigido
+- **`/list` e `/game` quebravam silenciosamente** (`BadRequest: Can't parse entities`)
+  quando nomes de jogos ou lojas continham caracteres especiais do Markdown (`*`, `_`, `` ` ``).
+  Causa raiz: `parse_mode="Markdown"` (legado) é frágil com dados dinâmicos de APIs externas.
+- Paginação do `/list` usava `len()` Python para contar caracteres — incorreto para
+  mensagens com emojis (que ocupam 2 code units no Telegram mas contam como 1 no Python).
+
+### Adicionado
+- Biblioteca `telegramify-markdown==1.1.1` como substituto robusto do parser legado.
+  Converte Markdown padrão para `(texto_limpo, MessageEntity[])` — zero escaping manual.
+- `formatters.py` — módulo centralizado com helpers de formatação e envio (DRY).
+- `tests/test_formatters.py` — 56 testes unitários cobrindo todos os helpers de formatação.
+- **Feature: URLs ocultas** — nome do jogo vira link clicável para a Steam Store.
+- **Feature: Blockquotes de status** — status do deal exibido em card visual com tagline.
+- **Feature: Spoiler no preço por pessoa** — em `/game` e `/want` (toque para revelar).
+- **Feature: Bloco monospace nos interessados** — lista alinhada como tabela em `/game`.
+- **Feature: Banner do jogo** — `/game` e `/add` exibem a imagem do header da Steam.
+
+### Alterado
+- Todos os handlers migrados de `parse_mode="Markdown"` para entities via `send_md()`.
+- Paginação do `/list` migrada de `len()` manual para `split_entities()` (UTF-16 correto).
+- `_format_price()` e `_get_status_emoji()` movidos de `bot.py` para `formatters.py`.
+- `_format_price()` agora usa formato BRL com vírgula (`R$ 59,90`) e trata `0.0` como `Grátis 🎉`.
+- `test_bot.py` atualizado para importar helpers de `formatters` em vez de `bot`.
+
+### Resultados
+```
+test_api.py        → 18 passed ✅
+test_bot.py        → 25 passed ✅
+test_database.py   → 22 passed ✅
+test_formatters.py → 56 passed ✅
+Total: 121/121 testes passando (0.50s)
+```
+
+### Arquivos afetados
+- `bot.py` [MODIFICADO] — handlers migrados para `formatters.send_md()`
+- `formatters.py` [NOVO] — módulo centralizado de formatação e envio
+- `requirements.txt` [MODIFICADO] — `telegramify-markdown==1.1.1`
+- `tests/test_formatters.py` [NOVO] — 56 testes
+- `tests/test_bot.py` [MODIFICADO] — imports redirecionados para `formatters`
+- `docs/decisions/002-telegramify-markdown.md` [NOVO] — ADR da decisão
+
+---
+
 ## [v0.7.1] — 2026-03-28 — Sprint 1: Correções Críticas ✅
 
 ### Corrigido

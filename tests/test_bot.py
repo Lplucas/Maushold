@@ -15,6 +15,7 @@ Cobertura:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import bot
+import formatters
 
 
 # =============================================================================
@@ -24,22 +25,22 @@ import bot
 class TestFormatPrice:
 
     def test_normal_price(self):
-        assert bot._format_price(100.50) == "R$ 100.50"
+        assert formatters._format_price(100.50) == "R$ 100,50"
 
     def test_zero_price(self):
-        assert bot._format_price(0.0) == "R$ 0.00"
+        assert formatters._format_price(0.0) == "Grátis 🎉"
 
     def test_sentinel_default_fallback(self):
-        assert bot._format_price(-1.0) == "N/D"
+        assert formatters._format_price(-1.0) == "N/D"
 
     def test_sentinel_custom_fallback(self):
-        assert bot._format_price(-1.0, "Indisponível") == "Indisponível"
+        assert formatters._format_price(-1.0, "Indisponível") == "Indisponível"
 
     def test_small_price(self):
-        assert bot._format_price(0.99) == "R$ 0.99"
+        assert formatters._format_price(0.99) == "R$ 0,99"
 
     def test_large_price(self):
-        assert bot._format_price(999.99) == "R$ 999.99"
+        assert formatters._format_price(999.99) == "R$ 999,99"
 
 
 # =============================================================================
@@ -50,42 +51,40 @@ class TestGetStatusEmoji:
 
     def test_no_usable_data(self):
         """Sem dados de preço → ❓"""
-        assert bot._get_status_emoji(-1.0, -1.0, -1.0) == "❓"
+        assert formatters._get_status_emoji(-1.0, -1.0, -1.0) == "❓"
 
     def test_at_historical_low(self):
         """Preço atual == mínimo histórico → 🔥"""
-        assert bot._get_status_emoji(100.0, 40.0, 40.0) == "🔥"
+        assert formatters._get_status_emoji(100.0, 40.0, 40.0) == "🔥"
 
     def test_within_tolerance_of_historical_low(self):
         """Dentro de R$0.01 do mínimo → 🔥"""
-        assert bot._get_status_emoji(100.0, 40.01, 40.0) == "🔥"
+        assert formatters._get_status_emoji(100.0, 40.01, 40.0) == "🔥"
 
     def test_solid_discount_30_percent(self):
         """Exatamente 30% off → ✅"""
-        assert bot._get_status_emoji(100.0, 70.0, 40.0) == "✅"
+        assert formatters._get_status_emoji(100.0, 70.0, 40.0) == "✅"
 
     def test_solid_discount_50_percent(self):
         """50% off → ✅"""
-        assert bot._get_status_emoji(100.0, 50.0, 20.0) == "✅"
+        assert formatters._get_status_emoji(100.0, 50.0, 20.0) == "✅"
 
     def test_bad_deal_5_percent(self):
         """Apenas 5% off → ❌"""
-        assert bot._get_status_emoji(100.0, 95.0, 40.0) == "❌"
+        assert formatters._get_status_emoji(100.0, 95.0, 40.0) == "❌"
 
     def test_no_discount(self):
         """0% off → ❌"""
-        assert bot._get_status_emoji(100.0, 100.0, 40.0) == "❌"
+        assert formatters._get_status_emoji(100.0, 100.0, 40.0) == "❌"
 
     def test_negative_current_positive_deal(self):
         """current_price < 0 mas best_deal >= 0 → não é ❓ (tem dados parciais)."""
-        # reference_price = best_deal, historical_low check applies
-        result = bot._get_status_emoji(-1.0, 50.0, 50.0)
+        result = formatters._get_status_emoji(-1.0, 50.0, 50.0)
         assert result == "🔥"  # best_deal == historical_low
 
     def test_positive_current_negative_deal(self):
         """current_price > 0, best_deal = -1.0, com histórico."""
-        # reference_price falls back to current_price
-        result = bot._get_status_emoji(40.0, -1.0, 40.0)
+        result = formatters._get_status_emoji(40.0, -1.0, 40.0)
         assert result == "🔥"  # current == historical_low
 
 
