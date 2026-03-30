@@ -2,6 +2,7 @@ python-telegram-bot==21.6
 aiohttp==3.13.4
 aiofiles==25.1.0
 python-dotenv==1.0.0
+telegramify-markdown==1.1.1
 
 
 # Testing
