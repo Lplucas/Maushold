@@ -51,6 +51,36 @@ Total: 121/121 testes passando (0.50s)
 
 ---
 
+## [v0.7.1.1] — 2026-03-29 — Sprint 2: Refatoração Assíncrona ✅
+
+### Adicionado
+- **Otimização Regex:** `STEAM_APP_RE = re.compile(...)` adicionado como constante global no topo do arquivo `api.py` para melhorar performance na extração de AppIDs.
+- Documentação pertinente ao ciclo (ADR `001-async-migration.md`).
+
+### Alterado
+- **Rede Async:** Substituição completa da biblioteca síncrona `requests` por `aiohttp` em `api.py` (`get_steam_game_info`, `_get_itad_uuid`, `get_itad_prices`), substituindo a exceção nativa `requests.exceptions.Timeout` por `asyncio.TimeoutError`.
+- **I/O Async:** Substituição do `open()` síncrono por `aiofiles` no `database.py` (`load_database` e `save_database`), evitando que operações de leitura/escrita no disco bloqueiem o event loop principal do bot.
+- **Resiliência aprimorada:** A rotina de carregamento na `load_database` agora separa "leitura de disco I/O assíncrono" e "desserialização de dict do json", bem como inclui try-except explícito pegando `json.JSONDecodeError` para lidar preventivamente com corrupções de arquivo - retornando como fallback a base vazia padrão.
+- **Paralelismo:** O `bot.py` passou a utilizar `asyncio.gather()` em `_add_game_to_db()` para despachar em simultâneo as chamadas em rede do Steam e do ITAD. O tempo de execução nos comandos listados (`/add` e `/want`) foi reduzido severamente por executar as APIs mais densas ao mesmo passo.
+- **Testes Unitários:** Ampla alteração nos módulos de testes (`test_api.py` e `test_database.py`) portando mocks antigos que espelhavam I/O bloqueante com natividades assíncronas fornecidas pelo `@pytest.mark.asyncio`, implementando o `AsyncMock`.
+
+### Removido
+- Biblioteca estritamente síncrona `requests` foi 100% suprimida das dependências do `requirements.txt` e uso interno em todos os arquivos de projeto.
+
+### Resultados
+- Refatoração profunda finalizada sem qualquer alteração de comportamento da aplicação (`exit_code 0`, passando 100% dos testes da conversão síncrono ➝ assíncrono). A execução agora garante assincronicidade real sem entraves ("gargalos") herdados do I/O nativo anterior.
+
+### Arquivos afetados
+- `api.py` [MODIFICADO]
+- `bot.py` [MODIFICADO]
+- `database.py` [MODIFICADO]
+- `tests/test_api.py` [MODIFICADO]
+- `requirements.txt` [MODIFICADO]
+- `README.md` [MODIFICADO]
+- `docs/decisions/001-async-migration.md` [NOVO]
+
+---
+
 ## [v0.7.1] — 2026-03-28 — Sprint 1: Correções Críticas ✅
 
 ### Corrigido
@@ -313,13 +343,13 @@ Total: 16/16 testes passando
 
 O roadmap foi reestruturado com base na **Análise Técnica v3.0**, priorizando a estabilidade, refatoração de I/O assíncrono e arquitetura limpa antes das features em nuvem. Cada ciclo foca em ganho mensurável no código e facilidade de teste continuo.
 
-## Fase 1 — Estabilidade e Assincronicidade (Sprints 1 e 2) 🚧
-### v0.9.0 — Async Completo & Correção Crítica
-- [ ] **Correção de Bugs:** Inclusão de `await` e campo `best_deal_shop` nas funções de add do `bot.py`
-- [ ] **Rede Async:** Substituir `requests` bloqueante por `aiohttp` na `api.py`
-- [ ] **I/O Async:** Substituir `open()` síncrono por `aiofiles` na `database.py` com `try-except json.JSONDecodeError` contra arquivos corrompidos
-- [ ] **Paralelismo:** Implementar `asyncio.gather()` para buscar preços Steam + ITAD em simultâneo (~4s para ~2s)
-- [ ] **Otimização Regex:** Usar `re.compile(r"/app/(\d+)")` constante global em `api.py`
+## Fase 1 — Estabilidade e Assincronicidade (Sprints 1 e 2) ✅
+### v0.7.1.1 — Async Completo & Correção Crítica
+- [x] **Correção de Bugs:** Inclusão de `await` e campo `best_deal_shop` nas funções de add do `bot.py`
+- [x] **Rede Async:** Substituir `requests` bloqueante por `aiohttp` na `api.py`
+- [x] **I/O Async:** Substituir `open()` síncrono por `aiofiles` na `database.py` com `try-except json.JSONDecodeError` contra arquivos corrompidos
+- [x] **Paralelismo:** Implementar `asyncio.gather()` para buscar preços Steam + ITAD em simultâneo (~4s para ~2s)
+- [x] **Otimização Regex:** Usar `re.compile(r"/app/(\d+)")` constante global em `api.py`
 
 ## Fase 2 — Arquitetura Pydantic, Repositories e Services (Sprints 3 e 4) 📋
 ### v0.10.0 — Desacoplamento do Domínio
