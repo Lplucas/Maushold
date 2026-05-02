@@ -139,11 +139,14 @@ async def get_steam_game_info(app_id: str) -> dict | None:
         if price_overview:
             # "final" = price after discount, in CENTS
             current_price = price_overview.get("final", 0) / 100
+            steam_discount_cut = price_overview.get("discount_percent", 0)
         else:
             current_price = 0.0  # Free-to-play
+            steam_discount_cut = 0
 
-        logger.info("[Steam API] '%s' → R$ %.2f", name, current_price)
-        return {"name": name, "current_price": current_price}
+        discount_info = f" | Steam: {steam_discount_cut}% off" if steam_discount_cut > 0 else ""
+        logger.info("[Steam API] '%s' → R$ %.2f%s", name, current_price, discount_info)
+        return {"name": name, "current_price": current_price, "steam_discount_cut": steam_discount_cut}
 
     # asyncio.TimeoutError substitui requests.exceptions.Timeout.
     # aiohttp usa as exceções do próprio asyncio para timeout.
@@ -169,14 +172,10 @@ async def _get_itad_uuid(app_id: str) -> str | None:
     Converts a Steam AppID into ITAD's internal UUID.
 
     Função interna (prefixo _) — deve ser chamada apenas dentro deste módulo.
-    Usa aiohttp para POST assíncrono. Requer await ao chamar.
+    Usa aiohttp para GET assíncrono. Requer await ao chamar.
 
     ITAD uses UUIDs (e.g. "018d937f-012f-73b8-ab2c-898516969e6a") to identify
     games across stores. We must resolve the Steam AppID before querying prices.
-
-    Request body format: ["app/1091500"]
-    Response format:     {"app/1091500": "018d937f-...", ...}
-    A null value means ITAD doesn't track this game.
 
     Args:
         app_id (str): Steam AppID to resolve.
@@ -188,24 +187,27 @@ async def _get_itad_uuid(app_id: str) -> str | None:
         logger.error("[ITAD] API key not configured! Set ITAD_API_KEY in .env")
         return None
 
-    shop_game_id = f"app/{app_id}"
+    #shop_game_id = f"app/{app_id}"
     logger.info("[ITAD Lookup] Resolving Steam AppID %s → UUID", app_id)
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{ITAD_BASE_URL}/lookup/gid/id/v1",
-                json=[shop_game_id],
-                params={"key": ITAD_API_KEY},
+            async with session.get(
+                f"{ITAD_BASE_URL}/games/lookup/v1",                
+                params={"key": ITAD_API_KEY, "appid": app_id},
                 timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
             ) as response:
                 response.raise_for_status()
                 data = await response.json()
+            
+            if not data.get("found"):
+                logger.warning("[ITAD Lookup] Game not found on ITAD for AppID %s", app_id)
+                return None
 
-        itad_uuid = data.get(shop_game_id)
+        itad_uuid = data.get("game", {}).get("id")
 
         if not itad_uuid:
-            logger.warning("[ITAD Lookup] No UUID for %s", shop_game_id)
+            logger.warning("[ITAD Lookup] No UUID inside response for AppID %s", app_id)
             return None
 
         logger.info("[ITAD Lookup] UUID → %s", itad_uuid)

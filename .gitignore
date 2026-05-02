@@ -7,7 +7,7 @@
 .env
 
 # --- Database (auto-generated at runtime) ---
-database.json   # Local game data — each dev/instance has their own
+database.json
 
 # --- Python cache & Testing ---
 __pycache__/
@@ -19,6 +19,7 @@ __pycache__/
 htmlcov/
 *_test_results.txt
 *.ipynb_checkpoints/
+*_output.txt
 
 # --- Profiling output ---
 *.prof
@@ -46,3 +47,4 @@ Thumbs.db       # Windows
 # --- User Documents ---
 md-references/
 Cloud-and-DB_implementation_plan.md
+tests/temp_itad_api/

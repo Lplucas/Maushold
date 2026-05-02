@@ -40,7 +40,7 @@ import formatters
 # - CommandHandler: Tells the bot "when you see /this_command, run this function".
 # - ContextTypes: Gives us access to helper objects inside our command functions.
 # - Update: Represents an incoming message or event from Telegram.
-from telegram import Update
+from telegram import Update, LinkPreviewOptions
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 
@@ -263,23 +263,28 @@ async def _add_game_to_db(app_id: str) -> dict:
 
     game_name = steam_info["name"]
     current_price = steam_info["current_price"]
+    steam_discount_cut = steam_info.get("steam_discount_cut", 0)
 
     # ITAD é optional — o bot funciona mesmo sem dados de deal/histórico
     if isinstance(itad_data, Exception) or itad_data is None:
         best_deal_price = -1.0
         best_deal_shop  = ""
+        best_deal_cut   = 0
         historical_low  = -1.0
     else:
         best_deal_price = itad_data["best_deal_price"]
         best_deal_shop  = itad_data.get("best_deal_shop", "")
+        best_deal_cut   = itad_data.get("best_deal_cut", 0)
         historical_low  = itad_data["historical_low"]
 
     was_added = await database.add_game(
         app_id=app_id,
         name=game_name,
         current_price=current_price,
+        steam_discount_cut=steam_discount_cut,
         best_deal_price=best_deal_price,
         best_deal_shop=best_deal_shop,
+        best_deal_cut=best_deal_cut,
         historical_low=historical_low
     )
 
@@ -497,8 +502,11 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     for chunk_text, chunk_entities in chunks:
         await update.message.reply_text(
             chunk_text,
-            entities=[e.to_dict() for e in chunk_entities]
+            entities=[e.to_dict() for e in chunk_entities],
+            link_preview_options=LinkPreviewOptions(is_disabled=True)
         )
+        if len(chunks) > 1:
+            await asyncio.sleep(0.5) # Defesa contra rate limit (Telegram Error 429)
 
 
 # =============================================================================

@@ -7,14 +7,16 @@ Um bot para o Telegram que substitui a planilha compartilhada para racharem jogo
 RatBot/
 ├── bot.py                 # Arquivo principal — conecta ao Telegram, recebe comandos e orquestra chamadas assíncronas
 ├── api.py                 # Comunicação externa (Steam API e ITAD API) via requisições aiohttp (Non-blocking)
+├── formatters.py          # Formatação centralizada de mensagens e desativação de link previews
 ├── database.py            # Toda a lógica de leitura/escrita do banco de JSON de forma assíncrona com aiofiles
 ├── database.json          # Criado automaticamente na primeira execução
 │
-├── tests/                 # Testes unitários (pytest) — 65 testes
+├── tests/                 # Testes unitários (pytest) — 121 testes
 │   ├── conftest.py        # Fixtures reutilizáveis (mock_update, mock_context)
-│   ├── test_api.py        # 22 testes — URLs, Steam API, ITAD, erros, mock assíncrono
-│   ├── test_bot.py        # 20 testes — todos os comandos + helpers
-│   ├── test_database.py   # 17 testes — CRUD, edge cases, resiliência
+│   ├── test_api.py        # 18 testes — URLs, Steam API, ITAD, erros, mock assíncrono
+│   ├── test_bot.py        # 25 testes — todos os comandos + helpers
+│   ├── test_database.py   # 22 testes — CRUD, edge cases, resiliência
+│   ├── test_formatters.py # 56 testes — formatação visual das mensagens
 │   └── benchmarks/        # Scripts de performance
 │       ├── bench_database.py  # I/O, lookup, scan benchmarks
 │       └── bench_api.py       # Overhead de processamento de API
@@ -113,7 +115,7 @@ python bot.py
 Você verá a mensagem `✅ Bot is running!`. Para parar, pressione **Ctrl+C**.
 
 ### 2. Rodar os testes
-Garantimos a qualidade do código com 55 testes unitários. Para rodá-los:
+Garantimos a qualidade do código com 121 testes unitários. Para rodá-los:
 ```bash
 # Rodar todos os testes
 python -m pytest tests/ -v

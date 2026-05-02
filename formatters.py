@@ -18,8 +18,8 @@
 # =============================================================================
 
 import logging
-
 from telegramify_markdown import convert, split_entities
+from telegram import LinkPreviewOptions #eliminar preview do /list
 
 
 # =============================================================================
@@ -105,7 +105,7 @@ def _format_price(price: float, fallback: str = "N/D") -> str:
     return f"R$ {price:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def _get_status_emoji(current_price: float, best_deal: float, historical_low: float) -> str:
+def _get_status_emoji(current_price: float, best_deal: float, historical_low: float, best_deal_cut: int = 0) -> str:
     """Determina o emoji de status de deal baseado nos dados de preço.
 
     Regras (em ordem de prioridade):
@@ -130,11 +130,10 @@ def _get_status_emoji(current_price: float, best_deal: float, historical_low: fl
     if historical_low >= 0 and reference_price <= historical_low + 0.01:
         return "🔥"
 
-    # ✅ Pelo menos 30% de desconto em relação ao preço Steam
-    if current_price > 0 and best_deal >= 0:
-        discount_pct = (current_price - best_deal) / current_price * 100
-        if discount_pct >= 30:
-            return "✅"
+    # ✅ Pelo menos 30% de desconto em relação ao preço Steam. Confia no deal reportado pelo ITAD.
+    # current_price é o preço da steamApi, se tiver com desconto na steam, reflete aqui.
+    if best_deal_cut >= 30:
+        return "✅"
 
     # ❌ Sem promoção relevante
     return "❌"
@@ -273,13 +272,16 @@ def build_list_block(app_id: str, game: dict) -> str:
     current_price = game.get("current_price", -1.0)
     best_deal = game.get("best_deal_price", -1.0)
     deal_shop = game.get("best_deal_shop", "")
+    best_deal_cut = game.get("best_deal_cut", 0)
     hist_low = game.get("historical_low", -1.0)
 
     # Status emoji
-    status = _get_status_emoji(current_price, best_deal, hist_low)
+    status = _get_status_emoji(current_price, best_deal, hist_low, best_deal_cut)
 
     # Preços formatados
-    steam_str = _format_price(current_price)
+    steam_discount_cut = game.get("steam_discount_cut", 0)
+    steam_badge = f" **({steam_discount_cut}% off)**" if steam_discount_cut > 0 else ""
+    steam_str = _format_price(current_price) + steam_badge
 
     deal_str = _format_price(best_deal)
     if deal_shop and best_deal >= 0:
@@ -320,13 +322,16 @@ def build_game_summary_caption(game: dict, app_id: str) -> str:
     current_price = game.get("current_price", -1.0)
     best_deal = game.get("best_deal_price", -1.0)
     deal_shop = game.get("best_deal_shop", "")
+    best_deal_cut = game.get("best_deal_cut", 0)
     hist_low = game.get("historical_low", -1.0)
 
     # Status
-    status = _get_status_emoji(current_price, best_deal, hist_low)
+    status = _get_status_emoji(current_price, best_deal, hist_low, best_deal_cut)
 
     # Preços
-    steam_str = _format_price(current_price)
+    steam_discount_cut = game.get("steam_discount_cut", 0)
+    steam_badge = f" **({steam_discount_cut}% off)**" if steam_discount_cut > 0 else ""
+    steam_str = _format_price(current_price) + steam_badge
 
     deal_str = _format_price(best_deal)
     if deal_shop and best_deal >= 0:
@@ -391,6 +396,7 @@ def build_game_interests_text(game: dict, app_id: str) -> str:
 
 async def send_md(message, markdown_text: str) -> None:
     """Converte Markdown padrão para entities e envia como reply.
+        Link previews desabilitados para não poluir a mensagem 
 
     Processo:
       1. convert(markdown) → (texto_limpo, list[MessageEntity])
@@ -403,18 +409,20 @@ async def send_md(message, markdown_text: str) -> None:
         message: Objeto Message do python-telegram-bot (tem .reply_text()).
         markdown_text: String em Markdown padrão (GitHub-flavored).
     """
+    no_preview = LinkPreviewOptions(is_disabled=True)
     try:
         text, entities = convert(markdown_text)
         await message.reply_text(
             text,
-            entities=[e.to_dict() for e in entities]
+            entities=[e.to_dict() for e in entities],
+            link_preview_options=no_preview
         )
     except Exception:
         logger.warning(
             "[formatters] convert() falhou, enviando como texto puro",
             exc_info=True
         )
-        await message.reply_text(markdown_text)
+        await message.reply_text(markdown_text, link_preview_options=no_preview)
 
 
 async def edit_md(message, markdown_text: str) -> None:
@@ -427,18 +435,20 @@ async def edit_md(message, markdown_text: str) -> None:
         message: Objeto Message já enviado (tem .edit_text()).
         markdown_text: String em Markdown padrão.
     """
+    no_preview = LinkPreviewOptions(is_disabled=True)
     try:
         text, entities = convert(markdown_text)
         await message.edit_text(
             text,
-            entities=[e.to_dict() for e in entities]
+            entities=[e.to_dict() for e in entities],
+            link_preview_options=no_preview
         )
     except Exception:
         logger.warning(
             "[formatters] convert() falhou no edit, enviando como texto puro",
             exc_info=True
         )
-        await message.edit_text(markdown_text)
+        await message.edit_text(markdown_text, link_preview_options=no_preview)
 
 
 async def send_photo_md(message, photo_url: str, caption: str) -> None:

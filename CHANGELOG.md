@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.7.3] — 2026-05-01 — Desconto Steam e Melhorias na Mensageria ✅
+
+### Adicionado
+- **Integração de Desconto da Steam:** Extração do percentual de desconto da Steam API (`steam_discount_cut`) dentro de `api.py`.
+- Suporte para armazenar e persistir o campo `steam_discount_cut` no `database.json` via `database.py`.
+- **Badges de Desconto:** Exibição do desconto percentual (ex: `(50% off)`) visualmente associado aos preços Steam promocionais através de `formatters.py` em `/list`, `/add` e `/game`.
+
+### Corrigido e Alterado
+- **Correção nos Preços e Chamadas da API:** Atualização da lógica de parse de preços e chamadas na `api.py` para extrair, logar e enviar dados mais acurados de promoção (`bot.py`).
+- **Melhoria de Mensageria:** Melhor organização e estética das mensagens via modificações nos helpers de `formatters.py`.
+- **Eliminação de Link Previews:** Desativado o preview de links (WebPagePreview) especificamente no comando `/list` para deixar a resposta mais limpa e focada no conteúdo.
+
+### Resultados
+- O rastreamento de descontos oficiais da Steam agora fica muito mais transparente, facilitando a decisão de compra diretamente no painel das conversas do grupo.
+
+### Arquivos afetados
+- `api.py` [MODIFICADO]
+- `bot.py` [MODIFICADO]
+- `database.py` [MODIFICADO]
+- `formatters.py` [MODIFICADO]
+- `README.md` [MODIFICADO]
+- `CHANGELOG.md` [MODIFICADO]
+
 ## [v0.7.2] — 2026-03-30 — Hotfix Expedite: Formatação de Mensagens ✅
 
 ### Corrigido

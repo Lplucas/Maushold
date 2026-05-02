@@ -111,8 +111,10 @@ async def add_game(
     app_id: str,
     name: str,
     current_price: float,
+    steam_discount_cut: int,
     best_deal_price: float,
     best_deal_shop: str,
+    best_deal_cut: int,
     historical_low: float
 ) -> bool:
     """
@@ -144,8 +146,10 @@ async def add_game(
         "name": name,
         "app_id": app_id,
         "current_price": current_price,       # Steam official price in BRL
+        "steam_discount_cut": steam_discount_cut,  # Steam discount cut in %
         "best_deal_price": best_deal_price,   # Best promo deal (ITAD) in BRL
         "best_deal_shop": best_deal_shop,     # Store name (e.g. "Nuuvem")
+        "best_deal_cut": best_deal_cut,       # Best promo deal cut (ITAD) in BRL
         "historical_low": historical_low,     # All-time low (ITAD) in BRL
         "interested_users": []                # List of user IDs who want to split
         # Example after a few /want commands:
