@@ -159,7 +159,7 @@ class TestGetSteamGameInfo:
         mock_session_class.return_value = mock_session_class.replace_with.return_value
 
         result = await api.get_steam_game_info("1091500")
-        assert result == {"name": "Cyberpunk 2077", "current_price": 199.9}
+        assert result == {"name": "Cyberpunk 2077", "current_price": 199.9, "steam_discount_cut": 0}
 
     @patch("api.aiohttp.ClientSession")
     async def test_free_game_no_price_overview(self, mock_session_class):
@@ -174,7 +174,7 @@ class TestGetSteamGameInfo:
         mock_session_class.return_value = configured.return_value
 
         result = await api.get_steam_game_info("1091500")
-        assert result == {"name": "Free Game", "current_price": 0.0}
+        assert result == {"name": "Free Game", "current_price": 0.0, "steam_discount_cut": 0}
 
     @patch("api.aiohttp.ClientSession")
     async def test_app_id_not_found(self, mock_session_class):
@@ -229,7 +229,7 @@ class TestGetItadUuid:
         api.ITAD_API_KEY = "test_key"
 
         configured = _make_aiohttp_mock(
-            json_data={"app/1091500": "fake-uuid-123"}
+            json_data={"found": True, "game": {"id": "fake-uuid-123"}}
         )
         mock_session_class.return_value = configured.return_value
 
@@ -253,7 +253,7 @@ class TestGetItadUuid:
         api.ITAD_API_KEY = "test_key"
 
         configured = _make_aiohttp_mock(
-            json_data={"app/1091500": None}
+            json_data={"found": False}
         )
         mock_session_class.return_value = configured.return_value
 

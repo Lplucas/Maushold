@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [v0.7.3.1] — 2026-05-02 — Estabilização da Suite de Testes ✅
+
+### Corrigido
+- **`test_api.py` (3 fixes):** Assertivas de `get_steam_game_info()` atualizadas para incluir o novo campo `steam_discount_cut` no dict de retorno. Mocks do `_get_itad_uuid()` atualizados para refletir a estrutura real da API ITAD (`{"found": true, "game": {"id": "..."}}` em vez da estrutura deprecada `{"app/ID": "uuid"}`).
+- **`test_bot.py` (2 fixes):** Testes de `_get_status_emoji()` para cenários de ✅ (30% e 50% off) agora passam o parâmetro `best_deal_cut` — obrigatório após a remoção do fallback de cálculo manual de desconto na v0.7.3.
+- **`test_database.py` (7 fixes):** Todas as chamadas `add_game()` atualizadas de 6 para 8 argumentos posicionais (`steam_discount_cut` e `best_deal_cut`). Teste `test_all_fields_stored_correctly` expandido para verificar os novos campos no JSON persistido.
+- **`test_formatters.py` (2 fixes):** Mesma correção do `test_bot.py` — `best_deal_cut` adicionado aos cenários de ✅.
+- **`README.md`:** Contagem de testes por arquivo corrigida (22/24/15/60 = 121 total).
+
+### Resultados
+- **121 testes passando** (0 falhas) — suite totalmente sincronizada com a v0.7.3.
+- Nenhum teste novo adicionado, apenas correções de desalinhamento com o código de produção.
+
+### Arquivos afetados
+- `tests/test_api.py` [MODIFICADO]
+- `tests/test_bot.py` [MODIFICADO]
+- `tests/test_database.py` [MODIFICADO]
+- `tests/test_formatters.py` [MODIFICADO]
+- `README.md` [MODIFICADO]
+- `CHANGELOG.md` [MODIFICADO]
+
+---
+
 ## [v0.7.3] — 2026-05-01 — Desconto Steam e Melhorias na Mensageria ✅
 
 ### Adicionado

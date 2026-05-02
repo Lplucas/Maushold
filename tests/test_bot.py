@@ -63,11 +63,11 @@ class TestGetStatusEmoji:
 
     def test_solid_discount_30_percent(self):
         """Exatamente 30% off → ✅"""
-        assert formatters._get_status_emoji(100.0, 70.0, 40.0) == "✅"
+        assert formatters._get_status_emoji(100.0, 70.0, 40.0, best_deal_cut=30) == "✅"
 
     def test_solid_discount_50_percent(self):
         """50% off → ✅"""
-        assert formatters._get_status_emoji(100.0, 50.0, 20.0) == "✅"
+        assert formatters._get_status_emoji(100.0, 50.0, 20.0, best_deal_cut=50) == "✅"
 
     def test_bad_deal_5_percent(self):
         """Apenas 5% off → ❌"""

@@ -102,7 +102,7 @@ class TestAddGame:
 
     async def test_add_new_game_returns_true(self, temp_db_file):
         """Adicionar jogo novo → retorna True e dados estão no banco."""
-        added = await database.add_game("100", "Game 1", 50.0, 40.0, "Nuuvem", 10.0)
+        added = await database.add_game("100", "Game 1", 50.0, 0, 40.0, "Nuuvem", 10, 10.0)
         assert added is True
 
         data = await database.load_database()
@@ -112,8 +112,8 @@ class TestAddGame:
 
     async def test_add_duplicate_returns_false(self, temp_db_file):
         """Adicionar jogo que já existe → retorna False, não sobrescreve."""
-        await database.add_game("100", "Game 1", 50.0, 40.0, "", 10.0)
-        added_again = await database.add_game("100", "Game 1 (Dup)", 99.0, 99.0, "", 99.0)
+        await database.add_game("100", "Game 1", 50.0, 0, 40.0, "", 0, 10.0)
+        added_again = await database.add_game("100", "Game 1 (Dup)", 99.0, 0, 99.0, "", 0, 99.0)
         assert added_again is False
 
         # Verify original data preserved
@@ -123,7 +123,7 @@ class TestAddGame:
 
     async def test_all_fields_stored_correctly(self, temp_db_file):
         """Verifica que TODOS os campos são armazenados corretamente."""
-        await database.add_game("200", "Full Game", 99.99, 79.99, "Steam", 49.99)
+        await database.add_game("200", "Full Game", 99.99, 15, 79.99, "Steam", 20, 49.99)
 
         data = await database.load_database()
         game = data["games"]["200"]
@@ -131,8 +131,10 @@ class TestAddGame:
         assert game["name"] == "Full Game"
         assert game["app_id"] == "200"
         assert game["current_price"] == 99.99
+        assert game["steam_discount_cut"] == 15
         assert game["best_deal_price"] == 79.99
         assert game["best_deal_shop"] == "Steam"
+        assert game["best_deal_cut"] == 20
         assert game["historical_low"] == 49.99
         assert game["interested_users"] == []
 
@@ -183,7 +185,7 @@ class TestAddInterestedUser:
 
     async def test_add_user_success(self, temp_db_file):
         """Adicionar usuário a jogo existente → 'added'."""
-        await database.add_game("100", "Game 1", 50.0, 40.0, "", 10.0)
+        await database.add_game("100", "Game 1", 50.0, 0, 40.0, "", 0, 10.0)
         result = await database.add_interested_user("100", 12345, "lucas")
         assert result == "added"
 
@@ -194,7 +196,7 @@ class TestAddInterestedUser:
 
     async def test_duplicate_user(self, temp_db_file):
         """Mesmo usuário duas vezes → 'duplicate'."""
-        await database.add_game("100", "Game 1", 50.0, 40.0, "", 10.0)
+        await database.add_game("100", "Game 1", 50.0, 0, 40.0, "", 0, 10.0)
         await database.add_interested_user("100", 12345, "lucas")
         result = await database.add_interested_user("100", 12345, "lucas")
         assert result == "duplicate"
@@ -206,7 +208,7 @@ class TestAddInterestedUser:
 
     async def test_username_none_fallback(self, temp_db_file):
         """Username None → armazenado como 'unknown'."""
-        await database.add_game("100", "Game 1", 50.0, 40.0, "", 10.0)
+        await database.add_game("100", "Game 1", 50.0, 0, 40.0, "", 0, 10.0)
         result = await database.add_interested_user("100", 12345, None)
         assert result == "added"
 
@@ -215,7 +217,7 @@ class TestAddInterestedUser:
 
     async def test_multiple_users(self, temp_db_file):
         """Múltiplos usuários diferentes → todos adicionados corretamente."""
-        await database.add_game("100", "Game 1", 50.0, 40.0, "", 10.0)
+        await database.add_game("100", "Game 1", 50.0, 0, 40.0, "", 0, 10.0)
         await database.add_interested_user("100", 111, "user_a")
         await database.add_interested_user("100", 222, "user_b")
         await database.add_interested_user("100", 333, "user_c")

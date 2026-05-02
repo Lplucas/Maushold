@@ -13,10 +13,10 @@ RatBot/
 │
 ├── tests/                 # Testes unitários (pytest) — 121 testes
 │   ├── conftest.py        # Fixtures reutilizáveis (mock_update, mock_context)
-│   ├── test_api.py        # 18 testes — URLs, Steam API, ITAD, erros, mock assíncrono
-│   ├── test_bot.py        # 25 testes — todos os comandos + helpers
-│   ├── test_database.py   # 22 testes — CRUD, edge cases, resiliência
-│   ├── test_formatters.py # 56 testes — formatação visual das mensagens
+│   ├── test_api.py        # 22 testes — URLs, Steam API, ITAD, erros, mock assíncrono
+│   ├── test_bot.py        # 24 testes — todos os comandos + helpers
+│   ├── test_database.py   # 15 testes — CRUD, edge cases, resiliência
+│   ├── test_formatters.py # 60 testes — formatação visual das mensagens
 │   └── benchmarks/        # Scripts de performance
 │       ├── bench_database.py  # I/O, lookup, scan benchmarks
 │       └── bench_api.py       # Overhead de processamento de API

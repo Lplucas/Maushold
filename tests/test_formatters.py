@@ -134,10 +134,10 @@ class TestGetStatusEmoji:
         assert formatters._get_status_emoji(100.0, 40.01, 40.0) == "🔥"
 
     def test_30_percent_off_returns_checkmark(self):
-        assert formatters._get_status_emoji(100.0, 70.0, 50.0) == "✅"
+        assert formatters._get_status_emoji(100.0, 70.0, 50.0, best_deal_cut=30) == "✅"
 
     def test_exactly_30_percent_off_returns_checkmark(self):
-        assert formatters._get_status_emoji(100.0, 70.00, 50.0) == "✅"
+        assert formatters._get_status_emoji(100.0, 70.00, 50.0, best_deal_cut=30) == "✅"
 
     def test_no_meaningful_deal_returns_x(self):
         assert formatters._get_status_emoji(100.0, 95.0, 50.0) == "❌"
