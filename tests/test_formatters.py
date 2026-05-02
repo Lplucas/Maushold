@@ -17,6 +17,7 @@ Cobertura:
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from urllib.parse import urlparse
 from telegramify_markdown import convert
 
 import formatters
@@ -74,7 +75,9 @@ class TestSteamBannerUrl:
 
     def test_returns_cdn_path(self):
         result = formatters.steam_banner_url("1091500")
-        assert "cdn.akamai.steamstatic.com" in result
+        parsed = urlparse(result)
+        assert parsed.scheme == "https"
+        assert parsed.hostname == "cdn.akamai.steamstatic.com"
         assert "header.jpg" in result
         assert "1091500" in result
 
