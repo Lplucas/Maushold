@@ -36,59 +36,102 @@ RatBot/
 ### Arquitetura do Sistema
 
 ```mermaid
-graph TD
-    %% Estilos Globais (Otimizados com a Paleta Nativa do GitHub Dark Mode)
-    classDef user fill:#21262d,stroke:#8b949e,stroke-width:2px,color:#c9d1d9,rx:20,ry:20
-    classDef bot fill:#1f6feb,stroke:#58a6ff,stroke-width:3px,color:#ffffff,rx:20,ry:20
-    classDef api fill:#238636,stroke:#2ea043,stroke-width:3px,color:#ffffff,rx:20,ry:20
-    classDef db fill:#da3633,stroke:#ff7b72,stroke-width:3px,color:#ffffff,rx:20,ry:20
-    classDef external fill:#161b22,stroke:#6e7681,stroke-width:2px,color:#8b949e,stroke-dasharray: 5 5,rx:10,ry:10
-    classDef telegrm fill:#0088cc,stroke:#58a6ff,stroke-width:2px,color:#ffffff,stroke-dasharray: 5 5,rx:10,ry:10
-    classDef file fill:#d29922,stroke:#e3b341,stroke-width:2px,color:#000000
-    classDef async fill:#8957e5,stroke:#d2a8ff,stroke-width:2px,color:#ffffff,rx:5,ry:5
-    classDef spacer fill:none,stroke:none,color:transparent
+%%{init:{'theme':'dark', 'flowchart':{'curve':'basis'}}}%%
+flowchart LR
 
-    %% Atores e Sistemas
-    User(👨‍👩‍👧 Família Steam):::user
-    Telegram(((💬 API do Telegram))):::telegrm
+%% ═══════════════════════════════════════════════════════
+%% PALETA DE ESTILOS
+%% Mesma semântica do original — cada classe = categoria
+%% ═══════════════════════════════════════════════════════
 
-    %% Nódulos do Nosso App
-    subgraph APP["Servidor do RatBot (Arquitetura 100% Assíncrona)"]
-        Space[ ]:::spacer
-        Manager{"🧠 bot.py<br>(Gerente / Event Loop)"}:::bot
-        Messenger["🌐 api.py<br>(Mensageiro / aiohttp)"]:::api
-        Archivist["💾 database.py<br>(Arquivista / aiofiles)"]:::db
-        Paralelismo["⚡ asyncio.gather<br>(Despachante Paralelo)"]:::async
-        Space ~~~ Manager
+classDef user fill:#21262d, stroke:#8b949e, stroke-width:2px, color:#c9d1d9
+classDef bot fill:#1f6feb, stroke:#58a6ff, stroke-width:3px, color:#ffffff
+classDef formatter fill:#0d419d, stroke:#79c0ff, stroke-width:3px, color:#ffffff
+classDef lib fill:#388bfd, stroke:#a5d6ff, stroke-width:2px, color:#ffffff
+classDef api fill:#238636, stroke:#2ea043, stroke-width:3px, color:#ffffff
+classDef db fill:#da3633, stroke:#ff7b72, stroke-width:3px, color:#ffffff
+classDef external fill:#161b22, stroke:#6e7681, stroke-width:2px, color:#8b949e, stroke-dasharray:5 5
+classDef telegrm fill:#0088cc, stroke:#58a6ff, stroke-width:2px, color:#ffffff, stroke-dasharray:5 5
+classDef file fill:#d29922, stroke:#e3b341, stroke-width:2px, color:#000000
+classDef async fill:#8957e5, stroke:#d2a8ff, stroke-width:2px, color:#ffffff
+classDef layer fill:#161b22, stroke:#30363d, stroke-width:1px, color:#8b949e
+
+%% ─── Atores externos (coluna da esquerda) ──────────────
+User(["👨‍👩‍👧 Família Steam"]):::user
+Telegram((("💬 Telegram API"))):::telegrm
+
+%% ─── Núcleo da aplicação ────────────────────────────────
+subgraph APP["🖥️  Servidor RatBot — Arquitetura Assíncrona"]
+    subgraph APRESENTACAO["✉️  Camada de Apresentação"]
+        direction TB
+        Formatter["✉️ formatters.py"]:::formatter
+        Telegramify["📝 telegramify-markdown<br/>(Markdown → MessageEntity)"]:::lib
+    end
+    subgraph ORQUESTRACAO["🧠  Camada de Orquestração"]
+        direction TB
+        Manager{"🧠 bot.py<br/>(Gerente / Event Loop)"}:::bot
+        Paralelismo["⚡ asyncio.gather<br/>(return_exceptions=True)"]:::async
+    end
+    subgraph DADOS["🗄️  Camada de Dados"]
+        direction TB
+        Messenger["🌐 api.py<br/>(aiohttp)"]:::api
+        Archivist["💾 database.py<br/>(aiofiles)"]:::db
+    end
+end
+
+%% ─── Recursos e APIs (coluna da direita) ────────────────
+Lock(("🔒 asyncio.Lock")):::file
+Arquivo[/"📁 database.json"\]:::file
+Steam((("🎮 Steam API"))):::external
+ITAD((("🏷️ ITAD API"))):::external
+
+%% ─── FLUXO DE ENTRADA ───────────────────────────────────
+User  <-->|"Comandos /<br/>Respostas"| Telegram
+Telegram  <-->|"Polling Async<br/>(recebe Update)"| Manager
+
+%% ─── FLUXO DE SAÍDA ─────────────────────────────────────
+Manager  -->|"Delega<br/>formatação"| Formatter
+Formatter  -->|"Converte MD<br/>→ entities"| Telegramify
+Formatter  -->|"reply_text / reply_photo<br/>(sem parse_mode)"| Telegram
+
+%% ─── BUSCA DE DADOS (paralela) ──────────────────────────
+Manager  -->|"Dispara em<br/>paralelo"| Paralelismo
+Paralelismo  -.->|"Non-blocking"| Messenger
+Messenger  -->|"Sessão aiohttp"| Steam
+Messenger  -->|"Sessão aiohttp<br/>(reaproveitada)"| ITAD
+
+%% ─── PERSISTÊNCIA ────────────────────────────────────────
+Manager  -->|"Salvar /<br/>Consultar"| Archivist
+Archivist  -.->|"Aguarda Lock"| Lock
+Lock  -.->|"I/O via aiofiles"| Arquivo
+
+%% ─── ESTILOS DE CAMADAS E CONTAINER ─────────────────────
+style APP fill:transparent, stroke:#30363d, stroke-width:2px, stroke-dasharray:15 8, color:#8b949e
+style APRESENTACAO fill:#0d1117, stroke:#79c0ff, stroke-width:1px, color:#79c0ff
+style ORQUESTRACAO fill:#0d1117, stroke:#58a6ff, stroke-width:1px, color:#58a6ff
+style DADOS fill:#0d1117, stroke:#2ea043, stroke-width:1px, color:#2ea043
+
+%% ─── LEGENDA ─────────────────────────────────────────────
+    subgraph LEGENDA["🗺️  Legenda"]
+        direction LR
+        LA["Módulo<br/>interno"]:::bot
+        LB(("Recurso<br/>compartilhado")):::file
+        LC((("Serviço<br/>externo"))):::external
+        LD["Camada de<br/>Apresentação"]:::formatter
+        LE["Camada de<br/>Dados"]:::api
     end
 
-    %% Recursos Locais
-    Lock((🔒 asyncio.Lock)):::file
-    Arquivo[/"📁 database.json"\]:::file
+%% ─── CORES POR FLUXO ─────────────────────────────────────
+%% Índices na ordem de declaração das arestas acima:
+%% 0-1   → Entrada (User↔Telegram↔Manager)    → azul
+%% 2-4   → Saída (Manager→Formatter→Telegram)  → verde
+%% 5-8   → Dados (gather→api→Steam/ITAD)       → roxo
+%% 9-11  → Persistência (→Archivist→Lock→json) → laranja
 
-    %% Recursos Externos
-    Steam(((🎮 Steam API))):::external
-    ITAD(((🏷️ ITAD API))):::external
-
-    %% Conexões do Usuário
-    User <-->|"Manda /comandos<br>Recebe Mensagens"| Telegram
-    Telegram <-->|Polling Async| Manager
-
-    %% Conexões Internas do App
-    Manager -->|Dispara múltiplas buscas| Paralelismo
-    Paralelismo -.->|"Busca de forma simultânea<br>(Non-blocking)"| Messenger
-    Manager -->|Pede para salvar ou consultar| Archivist
-
-    %% Conexões do Mensageiro (API)
-    Messenger -->|Sessão aiohttp| Steam
-    Messenger -->|"Sessão aiohttp<br>(Conexão reaproveitada)"| ITAD
-
-    %% Conexões do Arquivista (DB)
-    Archivist -.->|Aguarda Lock assíncrono| Lock
-    Lock -.->|"Abre, Lê, Salva, Fecha<br>(I/O via aiofiles)"| Arquivo
-
-    %% Estilo do Servidor (Fundo transparente, borda padrão GitHub de demarcação)
-    style APP fill:transparent,stroke:#30363d,stroke-width:2px,stroke-dasharray: 15 10 8 4,color:#8b949e
+linkStyle 0,1 stroke:#58a6ff,stroke-width:2.5px
+linkStyle 2,3,4 stroke:#2ea043,stroke-width:2.5px
+linkStyle 5,6,7,8 stroke:#8957e5,stroke-width:2px,stroke-dasharray:6
+linkStyle 9,10,11 stroke:#d29922,stroke-width:2px,stroke-dasharray:4
 ```
 
 ## Configuração Inicial

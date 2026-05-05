@@ -1,0 +1,9 @@
+[tool.basedpyright]
+typeCheckingMode = "recommended"
+pythonVersion = "3.12"
+pythonPlatform = "Windows"
+venvPath = "."
+venv = ".venv"
+include = ["."]
+diagnosticMode = "workspace"
+useLibraryCodeForTypes = true
